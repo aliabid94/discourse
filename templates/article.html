@@ -1,0 +1,133 @@
+<html>
+<head>
+  <title>Discourse</title>
+  <link href="static/style/style.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <a href="/"><h1>Discourse</h1></a>
+      {% if current_user.is_authenticated %}
+      <span class="welcome">Hi, {{ current_user.id }} | <a class="link" href="/logout?redirect=/{{article['id']}}">Logout</a></span> 
+      {% else %}
+      <a class="link" href="/login?redirect=/{{article['id']}}">Sign In</a>
+      {% endif %}
+    </div>
+    <div class="line1">
+      <a href="#" class="upvote link">▲</a> 
+      <a class="article_link" href="#">{{article["title"]}}</a>
+    </div>
+    <div class="summary">{{article["summary"]}}</div>
+    <hr>
+    <p id="discussion_rules">
+      <strong>Discussion Rules</strong>: Use the space below for thoughtful conversation. Avoid making snarky comments or low-effort humor - flag these comments as <em>Low Quality</em>. Report comments that are threatening, derogatory, or spam. For comments you disagree with, use the <em>Disagree</em> button and engage the commentor with open curiousity.
+      Comments are <strong>not</strong> ordered by popularity - they are arranged to present many different viewpoints at the top of the discussion.
+    </p>
+    <div id="discussion">
+      <a class="link" onclick="open_reply(this, /*top_level=*/true);">create new comment</a>
+    </div>
+  </div>
+  <script>
+    let comments = {{comments|tojson}};
+    let article_id = {{article["id"]}};
+    let signed_in = {{ current_user.is_authenticated|tojson }};
+    $ = document.querySelector.bind(document);
+    $$ = document.querySelectorAll.bind(document);
+
+    let id_to_comments = {};
+    comments.map(comment => {id_to_comments[comment.id] = comment});
+    for (let comment of comments) {
+      if (comment.parent_id) {
+        let parent_comment = id_to_comments[comment.parent_id];
+        if (!parent_comment.children) {
+          parent_comment.children = [];
+        }
+        parent_comment.children.push(comment)
+      }
+    }
+    let getCommentCode = (comment, is_child) => {
+      let html = `<div class="comment ${is_child ? "child" : ""}" comment_id=${comment.id}>
+        <div class="comment_author">${comment.author}</div>
+        <div class="comment_content">${comment.content}</div>
+        <div class="comment_controls">
+          <a class="link" onclick="meta_comment(this, 'agree');">Agree ${comment.agrees > 0 ? "(" + comment.agrees + ")" : ""}</a> |
+          <a class="link" onclick="meta_comment(this, 'disagree');">Disagree ${comment.disagrees > 0 ? "(" + comment.disagrees + ")" : ""}</a> |
+          <a class="link" onclick="meta_comment(this, 'low_quality');">Low Quality</a> |
+          <a class="link" onclick="meta_comment(this, 'report');">Report</a> |
+          <a class="link" onclick="open_reply(this, /*top_level=*/false);">Reply</a>
+        </div>`;
+      if (comment.children) {
+        for (child_comment of comment.children) {
+          html += getCommentCode(child_comment, /*is_child=*/true);
+        }
+      }
+      html += "</div>"
+      return html;
+    }
+    let discussion_html = "";
+    for (let comment of comments) {
+      if (!comment.parent_id) {
+        discussion_html += getCommentCode(comment, /*is_child=*/false);
+      }
+    }
+    $("#discussion").innerHTML += discussion_html;
+
+
+    function post(url, data) {
+      return fetch(url, {
+        method: "POST", 
+        body: JSON.stringify(data)
+      })      
+    }
+    function meta_comment(item, action) {
+      if (!signed_in) {
+        location.href = "/login?redirect=/" + article_id; 
+      }
+      let comment_id = item.parentElement.parentElement.getAttribute("comment_id");
+      let data = {"comment_id": parseInt(comment_id)};
+      if (action == "agree") {
+        data["agreement"] = 1;
+      } else if (action == "disagree") {
+        data["agreement"] = -1;
+      } else if (action == "low_quality") {
+        data["low_quality"] = true;
+      } else if (action == "report") {
+        data["violation"] = true;
+      }
+      post("/meta_comment", data).then((response) => {
+        if (response.ok) {
+          item.style.fontWeight = "bold";
+        }
+      })
+
+    }
+    let open_replies = [];
+    function open_reply(item, top_level) {
+      if (!signed_in) {
+        location.href = "/login?redirect=/" + article_id; 
+      }
+      let parent_id = top_level ? -1 : item.parentElement.parentElement.getAttribute("comment_id");
+      if (open_replies.includes(parent_id)) {
+        return;
+      }
+      open_replies.push(parent_id);
+      item.parentElement.innerHTML += `<textarea autofocus></textarea><a class="link" onclick="submit_reply(this, ${top_level});">Submit</a>`
+      item.style.display = "none";
+    }
+    function submit_reply(item, top_level) {
+      let content = item.parentElement.querySelector("textarea").value;
+      let parent_id = top_level ? null : item.parentElement.parentElement.getAttribute("comment_id");
+      post("/comment", {
+        "content": content, 
+        "parent_id": parent_id,
+        "article_id": article_id
+      }).then((response) => {
+        if (response.ok) {
+          location.reload();
+        }
+      })
+    }
+
+  </script>
+</body>
+</html>

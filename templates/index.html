@@ -1,0 +1,40 @@
+<html>
+<head>
+  <title>Discourse</title>
+  <link href="static/style/style.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <a href="/"><h1>Discourse</h1></a>
+      {% if current_user.is_authenticated %}
+      <span class="welcome">Hi, {{ current_user.id }} | <a class="link" href="/logout">Logout</a></span> 
+      {% else %}
+      <a class="link" href="/login">Sign In</a>
+      {% endif %}
+    </div>
+    <div class="articles">
+      {% for article in articles %}
+      <div class="article">
+        <div class="line1">
+          <a href="#" class="upvote link">▲</a> 
+          <a class="article_link" href="#">{{loop.index + offset}}. {{article["title"]}}</a>
+        </div>
+        <div class="summary">{{article["summary"]}}</div>
+        <div class="line2">
+          {{article["upvotes"]}} points | <a class="open_summary link" onclick="open_summary(this);">[+] summary</a> | <a class="link" href="/{{article["id"]}}">{{article["comments"]}} comments</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if p > 1 %}<a class="link" href="/?p={{p-1}}">Prev Page</a> | {% endif %}
+    <a class="link" href="/?p={{p+1}}">Next Page</a>
+  </div>
+  <script>
+    function open_summary(item) {
+      item.parentElement.parentElement.querySelector(".summary").style.display = "block";
+      item.style.display = "none";
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<html>
+<head>
+  <title>Discourse</title>
+  <link href="static/style/style.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <a href="/"><h1>Discourse</h1></a>
+      {% if current_user.is_authenticated %}
+      <span class="welcome">Hi, {{ current_user.id }} | <a class="link" href="/logout">Logout</a></span> 
+      {% else %}
+      <a class="link" href="/login">Sign In</a>
+      {% endif %}
+    </div>
+    <div id="login_sections">
+      <form id="login" method="POST" action="/login?redirect={{redirect}}">
+        <h2>login</h2>        
+        <label for="username">username</label>
+        <input type="text" name="username">
+        <label for="password">password</label>
+        <input type="password" name="password">
+        <input class="link" type="submit">
+      </form>
+      <form id="signup" method="POST" action="/signup?redirect={{redirect}}">
+        <h2>signup</h2>        
+        <label for="username">username</label>
+        <input type="text" name="username">
+        <label for="password">password</label>
+        <input type="password" name="password">
+        <input class="link" type="submit">
+      </form>
+  </div>
+  <script>
+    function open_summary(item) {
+      item.parentElement.parentElement.querySelector(".summary").style.display = "block";
+      item.style.display = "none";
+    }
+  </script>
+</body>
+</html>

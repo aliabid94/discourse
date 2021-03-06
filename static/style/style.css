@@ -1,0 +1,130 @@
+html, body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: antiquewhite;
+}
+.container {
+  max-width: 1028px;
+  padding: 24px;
+  width: 100%;
+  min-height: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.link {
+  border-radius: 2px;
+  color: maroon;
+  text-decoration: none;
+  font-weight: bold;
+  transition: background-color 100ms;
+  padding: 4px;
+  cursor: pointer;
+}
+.link:hover {
+  background-color:peachpuff;
+}
+a {
+  text-decoration: none;
+  color: black;
+  font-weight: normal;
+}
+a:hover {
+  background-color: none;
+  text-decoration: underline;
+}
+.articles .summary {
+  display: none;
+}
+.summary {
+  padding: 1em 0;
+  font-size: 1.25em;
+}
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.article {
+  margin-bottom: 1em;
+}
+.line1 {
+  font-size: 1.6em;
+}
+.line2 {
+  margin-top: 4px;
+}
+hr {
+  border: 0;
+  height: 1px;
+  background: maroon;
+}
+#discussion_rules {
+  padding: 1em;
+  background-color: floralwhite;
+  border-radius: 4px;
+  font-size: 1.15em;
+}
+#discussion {
+  font-size: 1.25em;
+}
+.comment.child {
+  padding-left: 1em;
+  margin-left: 1em;
+  border-left: solid 1px gray;
+}
+.comment_controls {
+  padding-bottom: 0.75em;
+}
+.comment .link {
+  font-weight: normal;
+}
+.comment_author {
+  padding-top: 0.5em;
+  font-size: 0.8em;
+  color: grey;
+}
+.comment_content {
+  margin: 4px 0;
+}
+#discussion textarea {
+  display: block;
+  padding: 1em;
+  margin: 1em 0;
+  width: 100%;
+  height: 6em;
+  background-color: floralwhite;
+  border-radius: 4px;
+  border: none;
+  font: inherit;
+}
+#login_sections {
+  font-size: 1.25em;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+#login_sections > form {
+  flex-grow: 1;
+}
+#login_sections label  {
+  display: block;
+  margin: 0.5em 0;
+}
+#login_sections input[type=text], #login_sections input[type=password] {
+  background-color: floralwhite;
+  color: inherit;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 1.25em;
+  outline: inherit;
+  padding: 0.5em;
+}
+#login_sections input[type=submit] {
+  margin-top: 1em;
+  display: block;
+  background: none;
+  border: none;
+  font: inherit;
+}
