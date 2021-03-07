@@ -156,6 +156,9 @@ def submit_comment():
         "violations": 0,
     })
     db["comments"].insert(data)
+    article = db["articles"].get(data["article_id"])
+    article["comments"] += 1
+    db["articles"].upsert(article, pk="id")
     return {"success": True}
 
 
@@ -194,4 +197,4 @@ def submit_meta_comment():
 
 if __name__ == "__main__":
     create_tables()
-    app.run()
+    app.run(port=5099)
