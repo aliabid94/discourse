@@ -1,0 +1,46 @@
+<html>
+<head>
+  <title>Discourse</title>
+  <link href="static/style/style.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+  <div class="top">
+    <a href="/"><h1>Discourse</h1></a>
+    {% if current_user.is_authenticated %}
+    <span class="welcome">Hi, {{ current_user.id }} &bull;
+      <a class="link" href="/submit">Submit</a> &bull; 
+      <a class="link" href="/logout">Logout</a>
+    </span> 
+    {% else %}
+    <a class="link" href="/login">Sign In</a>
+    {% endif %}
+  </div>
+    <form id="submit" method="POST" action="/submit">
+      <h2>submit</h2>        
+      <label for="headline">headline</label>
+      <input type="text" name="headline">
+      <label for="url">url</label>
+      <input type="text" name="url">
+      <label for="summary">summary: write 3-4 sentences summarizing article between <u>150 and 400 characters</u>. do not reiterate headline.</label>
+      <textarea name="summary" onkeyup="countChar(this)"></textarea>
+      <div>
+        character count: 
+        <span id="char_count" style="color: crimson">0</span>
+      </div>
+      <input class="link" type="submit">
+    </form>
+  <script>
+    function countChar(item) {
+      var len = item.value.length;
+      char_count = document.querySelector("#char_count");
+      char_count.innerHTML = len;
+      if (len < 150 || len > 400) {
+        char_count.style.color = "crimson";
+      } else {
+        char_count.style.color = "inherit";
+      }
+    };    
+  </script>
+</body>
+</html>

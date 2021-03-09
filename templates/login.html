@@ -2,14 +2,16 @@
 <head>
   <title>Discourse</title>
   <link href="static/style/style.css" rel="stylesheet">
-  <meta name="viewport" content="width=device-width">
 </head>
 <body>
   <div class="container">
     <div class="top">
       <a href="/"><h1>Discourse</h1></a>
       {% if current_user.is_authenticated %}
-      <span class="welcome">Hi, {{ current_user.id }} | <a class="link" href="/logout">Logout</a></span> 
+      <span class="welcome">Hi, {{ current_user.id }} &bull;
+        <a class="link" href="/submit">Submit</a> &bull; 
+        <a class="link" href="/logout">Logout</a>
+      </span> 
       {% else %}
       <a class="link" href="/login">Sign In</a>
       {% endif %}
@@ -32,11 +34,5 @@
         <input class="link" type="submit">
       </form>
   </div>
-  <script>
-    function open_summary(item) {
-      item.parentElement.parentElement.querySelector(".summary").style.display = "block";
-      item.style.display = "none";
-    }
-  </script>
 </body>
 </html>

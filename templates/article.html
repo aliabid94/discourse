@@ -2,21 +2,24 @@
 <head>
   <title>Discourse</title>
   <link href="static/style/style.css" rel="stylesheet">
-  <meta name="viewport" content="width=device-width">
 </head>
 <body>
   <div class="container">
     <div class="top">
       <a href="/"><h1>Discourse</h1></a>
       {% if current_user.is_authenticated %}
-      <span class="welcome">Hi, {{ current_user.id }} | <a class="link" href="/logout?redirect=/{{article['id']}}">Logout</a></span> 
+      <span class="welcome">Hi, {{ current_user.id }} &bull;
+        <a class="link" href="/submit">Submit</a> &bull; 
+        <a class="link" href="/logout?redirect=/{{article['id']}}">Logout</a>
+      </span> 
       {% else %}
       <a class="link" href="/login?redirect=/{{article['id']}}">Sign In</a>
       {% endif %}
     </div>
     <div class="line1">
-      <a href="#" class="upvote link">▲</a> 
-      <a class="article_link" href="#">{{article["title"]}}</a>
+      <a class="upvote link">▲</a> 
+      <a class="article_link" href="{{ article['url'] }}">{{article["headline"]}}</a>
+      <small>({{ host }})</small>
     </div>
     <div class="summary">{{article["summary"]}}</div>
     <hr>
@@ -48,13 +51,13 @@
     }
     let getCommentCode = (comment, is_child) => {
       let html = `<div class="comment ${is_child ? "child" : ""}" comment_id=${comment.id}>
-        <div class="comment_author">${comment.author}</div>
+        <div class="comment_author">${comment.author} ${comment.age}</div>
         <div class="comment_content">${comment.content}</div>
         <div class="comment_controls">
-          <a class="link" onclick="meta_comment(this, 'agree');">Agree ${comment.agrees > 0 ? "(" + comment.agrees + ")" : ""}</a> |
-          <a class="link" onclick="meta_comment(this, 'disagree');">Disagree ${comment.disagrees > 0 ? "(" + comment.disagrees + ")" : ""}</a> |
-          <a class="link" onclick="meta_comment(this, 'low_quality');">Low Quality</a> |
-          <a class="link" onclick="meta_comment(this, 'report');">Report</a> |
+          <a class="link" onclick="meta_comment(this, 'agree');">Agree ${comment.agrees > 0 ? "(" + comment.agrees + ")" : ""}</a> &bull;
+          <a class="link" onclick="meta_comment(this, 'disagree');">Disagree ${comment.disagrees > 0 ? "(" + comment.disagrees + ")" : ""}</a> &bull;
+          <a class="link" onclick="meta_comment(this, 'low_quality');">Low Quality</a> &bull;
+          <a class="link" onclick="meta_comment(this, 'report');">Report</a> &bull;
           <a class="link" onclick="open_reply(this, /*top_level=*/false);">Reply</a>
         </div>`;
       if (comment.children) {
@@ -128,7 +131,26 @@
         }
       })
     }
-
+    if (signed_in) {
+      let upvote = document.querySelector(".upvote");
+      fetch("/upvote?" + new URLSearchParams({"article_ids": article_id}))
+      .then(response => response.json())
+      .then(upvoted_article_ids => {
+        if (upvoted_article_ids.length) {
+          upvote.classList.add("upvoted");
+        } else {
+          upvote.addEventListener("click", evt => {
+            post("/upvote", {"article_id" : article_id}).then(response => {
+              if (response.ok) {
+                upvote.classList.add("upvoted");
+              }
+            })
+          });        
+        }
+      })
+    } else {
+      document.querySelector(".upvote").setAttribute("href", "/login?redirect=/"+article_id);
+    }
   </script>
 </body>
 </html>

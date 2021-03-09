@@ -1,8 +1,11 @@
-from flask import Flask, request, render_template, send_from_directory, redirect, abort
+from flask import Flask, request, render_template, send_from_directory, redirect, abort, jsonify
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 import os
 import hashlib
 import sqlite_utils
+import tables
+import time
+from urllib.parse import urlparse
 
 ARTICLES_PER_PAGE = 25
 
@@ -11,50 +14,30 @@ app.secret_key = 'secret'
 login_manager = LoginManager()
 login_manager.login_view = 'login'
 login_manager.init_app(app)
-db = sqlite_utils.Database("discourse.db")
 
+def get_age(now, timestamp):
+    diff = now - timestamp
+    if diff < 60:
+        return "just now"
+    elif diff < 60 * 60:
+        unit = "minute"
+        diff /= 60
+    elif diff < 60 * 60 * 24:
+        unit = "hour"
+        diff /= (60 * 60)
+    else:
+        unit = "day"
+        diff /= (60 * 60 * 24)
+    diff = int(diff)
+    if diff != 1:
+        unit += "s"
+    return str(int(diff)) + " " + unit + " ago"
 
-def create_tables():
-    tables = db.table_names()
-    if "articles" not in tables:
-        db["articles"].create({
-            "id": int,
-            "title": str,
-            "summary": str,
-            "link": str,
-            "time_created": int,
-            "upvotes": int,
-            "comments": int,
-        }, pk="id")
-    if "comments" not in tables:
-        db["comments"].create({
-            "id": int,
-            "content": str,
-            "parent_id": int,
-            "author": str,
-            "article_id": int,
-            "time_created": int,
-            "agrees": int,
-            "disagrees": int,
-            "low_qualities": int,
-            "violations": int,
-        }, pk="id")
-    if "meta_comments" not in tables:
-        db["meta_comments"].create({
-            "comment_id": int,
-            "src_user": str,
-            "dest_user": str,
-            "time_created": int,
-            "agreement": int,  # -1 is disagree, 1 is agree
-            "low_quality": bool,
-            "violation": bool
-        }, pk=("comment_id", "src_user"))
-    if "users" not in tables:
-        db["users"].create({
-            "username": str,
-            "password_hash": str,
-        }, pk="username")
-
+def get_host(url):
+    url = urlparse(url).netloc
+    if url.startswith("www."):
+        url = url[4:]
+    return url
 
 @app.route('/')
 def homepage():
@@ -63,8 +46,10 @@ def homepage():
     offset = (p - 1) * ARTICLES_PER_PAGE
     top_articles = db["articles"].rows_where(order_by="upvotes desc",
                                              limit=ARTICLES_PER_PAGE, offset=offset)
-    return render_template("index.html", articles=list(top_articles), p=p, offset=offset,
-                           current_user=current_user)
+    articles = list(top_articles)
+    article_ids = [article["id"] for article in articles]
+    return render_template("index.html", articles=articles, article_ids=article_ids, p=p, offset=offset,
+                           current_user=current_user, now=time.time(), get_age=get_age, get_host=get_host)
 
 
 @app.route('/<int:article_id>')
@@ -73,7 +58,12 @@ def article(article_id):
     article = db["articles"].get(article_id)
     comments = db["comments"].rows_where(
         "article_id = ?", [article_id], order_by="id asc")
-    return render_template("article.html", article=article, comments=list(comments), current_user=current_user)
+    comments=list(comments)
+    now = time.time()
+    for comment in comments:
+        comment["age"] = get_age(now, comment["time_created"])
+    return render_template("article.html", article=article, comments=comments, 
+        current_user=current_user, host=get_host(article["url"]))
 
 
 @app.route('/favicon.ico')
@@ -91,6 +81,29 @@ class User:
 
     def get_id(self):
         return self.id
+
+
+@app.route('/submit', methods=["GET", "POST"])
+def submit():
+    if request.method == "GET":
+        return render_template("submit.html", current_user=current_user)
+    elif request.method == "POST":
+        db = sqlite_utils.Database("discourse.db")
+        articles_table = db["articles"]
+        url = request.form.get("url")
+        if not url.startswith("http://") and (not url.startswith("https://")):
+            url = "http://" + url
+        article = {
+            "headline": request.form.get("headline"),
+            "summary": request.form.get("summary"),
+            "url": url,
+            "submitter": current_user.id,
+            "time_created": int(time.time()),
+            "upvotes": 0,
+            "comments": 0,
+        }
+        articles_table.insert(article)
+        return redirect("/" + str(articles_table.last_pk))
 
 
 @app.route('/login', methods=["GET", "POST"])
@@ -115,18 +128,20 @@ def login():
 
 
 @app.route('/signup', methods=["POST"])
+@login_required
 def signup():
     username = request.form.get("username")
     password = request.form.get("password")
     password_hash = hashlib.md5(password.encode()).hexdigest()
     db = sqlite_utils.Database("discourse.db")
+    users_table = db["users"]
     try:
-        user = db["users"].get(username)
+        user = users_table.get(username)
         return abort(403, "User exists")
     except sqlite_utils.db.NotFoundError:
         pass
     user = {"username": username, "password_hash": password_hash}
-    db["users"].insert(user)
+    users_table.insert(user)
     login_user(User(username))
     return redirect("/")
 
@@ -150,16 +165,48 @@ def submit_comment():
     db = sqlite_utils.Database("discourse.db")
     data.update({
         "author": current_user.id,
+        "time_created": int(time.time()),
         "agrees": 0,
         "disagrees": 0,
         "low_qualities": 0,
         "violations": 0,
     })
-    db["comments"].insert(data)
-    article = db["articles"].get(data["article_id"])
+    articles_table = db["articles"]
+    comments_table = db["comments"]
+    comments_table.insert(data)
+    article = articles_table.get(data["article_id"])
     article["comments"] += 1
-    db["articles"].upsert(article, pk="id")
+    articles_table.upsert(article, pk="id")
     return {"success": True}
+
+@app.route('/upvote', methods=["GET", "POST"])
+@login_required
+def upvote():
+    db = sqlite_utils.Database("discourse.db")
+    upvotes_table = db["upvotes"]
+    if request.method == "GET":
+        article_ids = request.args.getlist("article_ids")
+        upvotes = upvotes_table.rows_where(
+            "username = ? and article_id in (" + ", ".join(["?"] * len(article_ids)) + ")", 
+            [current_user.id] + article_ids)
+        return jsonify([item["article_id"] for item in upvotes])
+    elif request.method == "POST":
+        data = request.get_json(force=True)
+        article_id = int(data["article_id"])
+        try:
+            upvotes_table.get((article_id, current_user.id))
+            return {"success": True}
+        except sqlite_utils.db.NotFoundError:
+            pass
+        upvotes_table.insert({
+            "username": current_user.id,
+            "article_id": article_id
+        }, pk=("article_id", "username"))
+        articles_table = db["articles"]
+        article = articles_table.get(article_id)
+        article["upvotes"] += 1
+        articles_table.upsert(article, pk="id")
+        return {"success": True}
 
 
 @app.route('/meta_comment', methods=["POST"])
@@ -169,10 +216,12 @@ def submit_meta_comment():
     agreement = data.get("agreement")
     assert agreement in [-1, 1, None]
     db = sqlite_utils.Database("discourse.db")
-    comment = db["comments"].get(data["comment_id"])
+    comments_table = db["comments"]
+    meta_comments_table = db["meta_comments"]
+    comment = comments_table.get(data["comment_id"])
     try:
-        existing_data = db["meta_comments"].get(
-            (data["comment_id"], "user_id"))
+        existing_data = meta_comments_table.get(
+            (data["comment_id"], current_user.id))
     except sqlite_utils.db.NotFoundError:
         existing_data = {}
     if agreement is not None:
@@ -188,13 +237,13 @@ def submit_meta_comment():
         comment["low_qualities"] += 1
     if not existing_data.get("violation") and data.get("violation"):
         comment["violations"] += 1
-    db["comments"].upsert(comment, pk="id")
-    data["src_user"] = current_user.id
-    data["dest_user"] = comment["author"]
-    db["meta_comments"].upsert(data, pk=("comment_id", "src_user"))
+    comments_table.upsert(comment, pk="id")
+    data["src_username"] = current_user.id
+    data["dest_username"] = comment["author"]
+    meta_comments_table.upsert(data, pk=("comment_id", "src_username"))
     return {"success": True}
 
 
 if __name__ == "__main__":
-    create_tables()
+    tables.create_tables()
     app.run(port=5099)

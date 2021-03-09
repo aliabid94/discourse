@@ -34,6 +34,12 @@ a:hover {
   background-color: none;
   text-decoration: underline;
 }
+.upvote {
+  transition: background-color 100ms;
+}
+.upvote.upvoted {
+  color: coral;
+}
 .articles .summary {
   display: none;
 }
@@ -48,10 +54,14 @@ a:hover {
 .article {
   margin-bottom: 1em;
 }
-.line1 {
-  font-size: 1.2rem;
+.credit {
+  margin-right: 4px;
+}
+.line1 small {
+  color: gray;
 }
 .line2 {
+  font-size: 0.8rem;
   margin-top: 4px;
 }
 hr {
@@ -67,9 +77,10 @@ hr {
 .comment.child {
   padding-left: 1em;
   margin-left: 1em;
-  border-left: solid 1px gray;
+  border-left: solid 2px rosybrown;
 }
 .comment_controls {
+  font-size: 0.8rem;
   padding-bottom: 0.75em;
 }
 .comment .link {
@@ -99,14 +110,14 @@ hr {
   flex-wrap: wrap;
   justify-content: space-between;
 }
-#login_sections > form {
+form {
   flex-grow: 1;
 }
-#login_sections label  {
+form label  {
   display: block;
   margin: 0.5em 0;
 }
-#login_sections input[type=text], #login_sections input[type=password] {
+form input[type=text], form input[type=password], form textarea {
   background-color: floralwhite;
   color: inherit;
   border: none;
@@ -116,10 +127,17 @@ hr {
   outline: inherit;
   padding: 0.5em;
 }
-#login_sections input[type=submit] {
+form textarea {
+  width: 320px;
+  height: 160px;
+}
+form input[type=submit] {
   margin-top: 1em;
   display: block;
   background: none;
   border: none;
   font: inherit;
+}
+#char_count {
+  font-weight: bold;
 }

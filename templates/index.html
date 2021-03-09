@@ -2,39 +2,82 @@
 <head>
   <title>Discourse</title>
   <link href="static/style/style.css" rel="stylesheet">
-  <meta name="viewport" content="width=device-width">
 </head>
 <body>
   <div class="container">
     <div class="top">
       <a href="/"><h1>Discourse</h1></a>
       {% if current_user.is_authenticated %}
-      <span class="welcome">Hi, {{ current_user.id }} | <a class="link" href="/logout">Logout</a></span> 
+      <span class="welcome">Hi, {{ current_user.id }} &bull;
+        <a class="link" href="/submit">Submit</a> &bull; 
+        <a class="link" href="/logout">Logout</a>
+      </span> 
       {% else %}
       <a class="link" href="/login">Sign In</a>
       {% endif %}
     </div>
     <div class="articles">
       {% for article in articles %}
-      <div class="article">
+      <div class="article" article_id={{ article["id"] }}>
         <div class="line1">
-          <a href="#" class="upvote link">▲</a> 
-          <a class="article_link" href="#">{{loop.index + offset}}. {{article["title"]}}</a>
+          <a class="upvote link">▲</a> 
+          <a class="article_link" href="{{ article['url'] }}">{{loop.index + offset}}. {{article["headline"]}}</a>
+          <small>({{ get_host(article['url']) }})</small>
         </div>
         <div class="summary">{{article["summary"]}}</div>
         <div class="line2">
-          {{article["upvotes"]}} points | <a class="open_summary link" onclick="open_summary(this);">[+] summary</a> | <a class="link" href="/{{article["id"]}}">{{article["comments"]}} comments</a>
+          <span class="credit">
+            {{article["upvotes"]}} points by {{article["submitter"]}} {{ get_age(now, article["time_created"]) }} 
+          </span> &bull;
+          <a class="open_summary link" onclick="open_summary(this);">[+] summary</a> &bull; <a class="link" href="/{{article["id"]}}">{{article["comments"]}} comments</a>
         </div>
       </div>
       {% endfor %}
     </div>
-    {% if p > 1 %}<a class="link" href="/?p={{p-1}}">Prev Page</a> | {% endif %}
+    {% if p > 1 %}<a class="link" href="/?p={{p-1}}">Prev Page</a> &bull; {% endif %}
     <a class="link" href="/?p={{p+1}}">Next Page</a>
   </div>
   <script>
+    let signed_in = {{ current_user.is_authenticated|tojson }};
+    let article_ids = {{ article_ids }};
+
+    function post(url, data) {
+      return fetch(url, {
+        method: "POST", 
+        body: JSON.stringify(data)
+      })      
+    }
     function open_summary(item) {
       item.parentElement.parentElement.querySelector(".summary").style.display = "block";
       item.style.display = "none";
+    }
+    if (signed_in) {
+      let upvote_params = article_ids.map(article_id => ["article_ids", article_id]);
+      fetch("/upvote?" + new URLSearchParams(upvote_params))
+      .then(response => response.json())
+      .then(upvoted_article_ids => {
+        upvoted_article_ids.forEach(article_id => {
+          document.querySelector('.article[article_id="' + article_id + '"] .upvote')
+            .classList.add("upvoted");
+        })
+        document.querySelectorAll(".article").forEach(item => {
+          let article_id = item.getAttribute("article_id");
+          if (!upvoted_article_ids.includes(article_id)) {
+            let upvote = item.querySelector(".upvote");
+            upvote.addEventListener("click", evt => {
+              post("/upvote", {"article_id" : article_id}).then(response => {
+                if (response.ok) {
+                  upvote.classList.add("upvoted");
+                }
+              })
+            });
+          }
+        })
+      })
+    } else {
+      document.querySelectorAll(".upvote").forEach(item => {
+        item.setAttribute("href", "/login")
+      });
     }
   </script>
 </body>
