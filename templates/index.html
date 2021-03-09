@@ -9,13 +9,16 @@
     <div class="top">
       <a href="/"><h1>Discourse</h1></a>
       {% if current_user.is_authenticated %}
-      <span class="welcome">Hi, {{ current_user.id }} &bull;
+      <div class="welcome">Hi, {{ current_user.id }} &bull;
         <a class="link" href="/submit">Submit</a> &bull; 
         <a class="link" href="/logout">Logout</a>
-      </span> 
+      </div> 
       {% else %}
       <a class="link" href="/login">Sign In</a>
       {% endif %}
+    </div>
+    <div id="how" class="attention">
+      Discourse is a news forum built to host discussion between many political viewpoints. Read <a class="link" href="/how">how it works</a>.
     </div>
     <div class="articles">
       {% for article in articles %}

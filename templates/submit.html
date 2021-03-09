@@ -9,11 +9,11 @@
   <div class="top">
     <a href="/"><h1>Discourse</h1></a>
     {% if current_user.is_authenticated %}
-    <span class="welcome">Hi, {{ current_user.id }} &bull;
+    <div class="welcome">Hi, {{ current_user.id }} &bull;
       <a class="link" href="/submit">Submit</a> &bull; 
       <a class="link" href="/logout">Logout</a>
-    </span> 
-    {% else %}
+    </div> 
+  {% else %}
     <a class="link" href="/login">Sign In</a>
     {% endif %}
   </div>

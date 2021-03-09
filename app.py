@@ -65,6 +65,26 @@ def article(article_id):
     return render_template("article.html", article=article, comments=comments, 
         current_user=current_user, host=get_host(article["url"]))
 
+def create_how_article():
+    db = sqlite_utils.Database("discourse.db")
+    articles_table = db["articles"]
+    try:
+        article = articles_table.get(0)
+    except sqlite_utils.db.NotFoundError:
+        db["articles"].insert({
+            "id": 0,
+            "headline": "How Discourse works.",
+            "summary": "Discourse is a news forum built to host discussion between many political viewpoints. Most discussion forums are organized using a 'like' or 'upvote/downvote' system where comments with the most votes rise to the top. This system causes the most popular viewpoints to drown out all others. \n \nDiscourse instead uses an 'agree/disagree' system where users identify which comments they agree with. With this data, Discourse can identify comments that represent distinct viewpoints and organize the comments on each page to present many diverse viewpoints at the top of the discussion. \n \nDiscourse relies on the community to create a welcoming environment for open discussion. When replying with disagreement, assume good faith and the most charitable interpretation of the comment you respond to. Keep the temperature low! Do not criticize or dismiss a commentor or a political group - instead, explain why you disagree with the logic of the comment or perspective itself. Discourse is a moderated community that relies on its users for self-moderation and quality discussion.",
+            "url": "#",
+            "submitter": "mod",
+            "time_created": int(time.time()),
+            "upvotes": 0,
+            "comments": 0,
+        }, pk="id")
+
+@app.route('/how')
+def how():
+    return article(0)
 
 @app.route('/favicon.ico')
 def favicon():
@@ -245,4 +265,5 @@ def submit_meta_comment():
 
 if __name__ == "__main__":
     tables.create_tables()
+    create_how_article()
     app.run(port=5099)

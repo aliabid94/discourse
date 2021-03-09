@@ -44,15 +44,30 @@ a:hover {
   display: none;
 }
 .summary {
-  padding: 1em 0;
+  padding: 0.6em 0;
+  white-space: pre-wrap;
 }
 .top {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
   align-items: baseline;
-  margin-bottom: 1em;
+}
+.top h1 {
+  margin-right: 3em;
+  margin-bottom: 0.4em;
 }
 .top .link {
+  font-weight: bold;
+}
+.welcome {
+  white-space: nowrap; 
+  margin-bottom: 0.4em;
+}
+#how {
+  margin-bottom: 0.67em;
+}
+#how .link {
   font-weight: bold;
 }
 .article {
@@ -72,8 +87,8 @@ hr {
   height: 1px;
   background: maroon;
 }
-#discussion_rules {
-  padding: 1em;
+.attention {
+  padding: 0.5em;
   background-color: floralwhite;
   border-radius: 4px;
 }
@@ -145,9 +160,4 @@ form input[type=submit] {
 }
 #char_count {
   font-weight: bold;
-}
-@media only screen and (max-width: 480px) {
-  .top {
-    display: block;
-  }
 }

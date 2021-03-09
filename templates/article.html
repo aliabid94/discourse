@@ -9,10 +9,10 @@
     <div class="top">
       <a href="/"><h1>Discourse</h1></a>
       {% if current_user.is_authenticated %}
-      <span class="welcome">Hi, {{ current_user.id }} &bull;
+      <div class="welcome">Hi, {{ current_user.id }} &bull;
         <a class="link" href="/submit">Submit</a> &bull; 
         <a class="link" href="/logout?redirect=/{{article['id']}}">Logout</a>
-      </span> 
+      </div> 
       {% else %}
       <a class="link" href="/login?redirect=/{{article['id']}}">Sign In</a>
       {% endif %}
@@ -20,11 +20,11 @@
     <div class="line1">
       <a class="upvote link">▲</a> 
       <a class="article_link" href="{{ article['url'] }}">{{article["headline"]}}</a>
-      <small>({{ host }})</small>
+      {% if host %}<small>({{ host }})</small>{% endif %}
     </div>
     <div class="summary">{{article["summary"]}}</div>
     <hr>
-    <p id="discussion_rules">
+    <p class="attention" id="discussion_rules">
       <strong>Discussion Rules</strong>: Use the space below for thoughtful conversation. Avoid making snarky comments or low-effort humor - flag these comments as <em>Low Quality</em>. Report comments that are threatening, derogatory, or spam. For comments you disagree with, use the <em>Disagree</em> button and engage the commentor with open curiousity.
       Comments are <strong>not</strong> ordered by popularity - they are arranged to present many different viewpoints at the top of the discussion.
     </p>
@@ -55,8 +55,8 @@
         <div class="comment_author">${comment.author} ${comment.age}</div>
         <div class="comment_content">${comment.content}</div>
         <div class="comment_controls">
-          <a class="link" onclick="meta_comment(this, 'agree');">Agree ${comment.agrees > 0 ? "(" + comment.agrees + ")" : ""}</a> &bull;
-          <a class="link" onclick="meta_comment(this, 'disagree');">Disagree ${comment.disagrees > 0 ? "(" + comment.disagrees + ")" : ""}</a> &bull;
+          <a class="link agreement" onclick="meta_comment(this, 'agree');">Agree ${comment.agrees > 0 ? "(" + comment.agrees + ")" : ""}</a> &bull;
+          <a class="link agreement" onclick="meta_comment(this, 'disagree');">Disagree ${comment.disagrees > 0 ? "(" + comment.disagrees + ")" : ""}</a> &bull;
           <a class="link" onclick="meta_comment(this, 'low_quality');">Low Quality</a> &bull;
           <a class="link" onclick="meta_comment(this, 'report');">Report</a> &bull;
           <a class="link" onclick="open_reply(this, /*top_level=*/false);">Reply</a>
@@ -101,6 +101,11 @@
       }
       post("/meta_comment", data).then((response) => {
         if (response.ok) {
+          if (action == "agree" || action == "disagree") {
+            item.parentElement.querySelectorAll(".agreement").forEach(agree_choice => {
+              agree_choice.style.fontWeight = "normal";
+            });      
+          }
           item.style.fontWeight = "bold";
         }
       })
