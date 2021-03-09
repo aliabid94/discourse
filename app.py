@@ -129,7 +129,6 @@ def login():
 
 @app.route('/signup', methods=["POST"])
 def signup():
-    print("-> s")
     username = request.form.get("username")
     password = request.form.get("password")
     password_hash = hashlib.md5(password.encode()).hexdigest()
@@ -140,12 +139,9 @@ def signup():
         return abort(403, "User exists")
     except sqlite_utils.db.NotFoundError:
         pass
-    print("-> d")
     user = {"username": username, "password_hash": password_hash}
     users_table.insert(user)
-    print("-> a")
     login_user(User(username))
-    print("-> b")
     return redirect("/")
 
 
