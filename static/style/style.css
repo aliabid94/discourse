@@ -15,11 +15,12 @@ html, body {
 }
 .link {
   border-radius: 2px;
+  display: inline-block;
   color: maroon;
   text-decoration: none;
   font-weight: bold;
   transition: background-color 100ms;
-  padding: 4px;
+  padding: 2px;
   cursor: pointer;
 }
 .link:hover {
@@ -52,7 +53,7 @@ a:hover {
   align-items: baseline;
 }
 .article {
-  margin-bottom: 1em;
+  margin-bottom: 0.5em;
 }
 .credit {
   margin-right: 4px;
@@ -62,7 +63,6 @@ a:hover {
 }
 .line2 {
   font-size: 0.8rem;
-  margin-top: 4px;
 }
 hr {
   border: 0;
@@ -75,8 +75,8 @@ hr {
   border-radius: 4px;
 }
 .comment.child {
-  padding-left: 1em;
-  margin-left: 1em;
+  padding-left: 0.75em;
+  margin-left: 0.5em;
   border-left: solid 2px rosybrown;
 }
 .comment_controls {
@@ -109,6 +109,9 @@ hr {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
+}
+#login {
+  margin-right: 40px;
 }
 form {
   flex-grow: 1;
