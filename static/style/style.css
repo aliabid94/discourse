@@ -55,7 +55,7 @@ a:hover {
   align-items: baseline;
 }
 .top h1 {
-  margin-right: 3em;
+  margin-right: 1em;
   margin-bottom: 0.4em;
 }
 .top .link {
@@ -63,7 +63,7 @@ a:hover {
 }
 .welcome {
   white-space: nowrap; 
-  margin-bottom: 0.4em;
+  margin-bottom: 0.75em;
 }
 #how {
   margin-bottom: 0.67em;
