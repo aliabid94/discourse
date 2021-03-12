@@ -1,7 +1,7 @@
 <html>
 <head>
   <title>Discourse</title>
-  <link href="static/style/style.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='style/style.css') }}" rel="stylesheet">
   <meta name="viewport" content="width=device-width">
 </head>
 <body>
@@ -29,7 +29,9 @@
       Comments are <strong>not</strong> ordered by popularity - they are arranged to present many different viewpoints at the top of the discussion.
     </p>
     <div id="discussion">
-      <a class="link" onclick="open_reply(this, /*top_level=*/true);">create new comment</a>
+      <div class="top_reply">
+        <a class="link" onclick="open_reply(this, /*top_level=*/true);">create new comment</a>
+      </div>
     </div>
   </div>
   <script>
@@ -49,10 +51,20 @@
         }
         parent_comment.children.push(comment)
       }
+      comment.children_count = 0;
+    }
+    for (let i = comments.length - 1; i >= 0; i--) {
+      let comment = comments[i];
+      if (comment.parent_id) {
+        let parent_comment = id_to_comments[comment.parent_id];
+        parent_comment.children_count += 1 + comment.children_count;
+      }
     }
     let getCommentCode = (comment, is_child) => {
       let html = `<div class="comment ${is_child ? "child" : ""}" comment_id=${comment.id}>
-        <div class="comment_author">${comment.author} ${comment.age}</div>
+        <a class="collapse" onclick="collapse(this);"><span class="close">[-]</span><span class="open">[+]</span></a>
+        <a href="#${comment.id}" class="comment_author">${comment.author} ${comment.age}</a>
+        ${comment.children_count > 0 ? `<span class="children_count"><span class="count">(+${comment.children_count}</span> children)</span>` : ""}
         <div class="comment_content">${comment.content}</div>
         <div class="comment_controls">
           <a class="link agreement" onclick="meta_comment(this, 'agree');">Agree ${comment.agrees > 0 ? "(" + comment.agrees + ")" : ""}</a> &bull;
@@ -76,7 +88,14 @@
       }
     }
     $("#discussion").innerHTML += discussion_html;
-
+    let collapse = item => {
+      let comment_element = item.parentElement;
+      if (comment_element.classList.contains("collapsed")) {
+        comment_element.classList.remove("collapsed");
+      } else {
+        comment_element.classList.add("collapsed");
+      }
+    };
 
     function post(url, data) {
       return fetch(url, {
@@ -131,10 +150,11 @@
         "content": content, 
         "parent_id": parent_id,
         "article_id": article_id
-      }).then((response) => {
-        if (response.ok) {
-          location.reload();
-        }
+      })
+      .then(response => response.json())
+      .then((response) => {
+        window.location.hash = response["comment_id"];
+        location.reload();
       })
     }
     if (signed_in) {
@@ -157,6 +177,18 @@
     } else {
       document.querySelector(".upvote").setAttribute("href", "/login?redirect=/"+article_id);
     }
+    let hash_handler = () => {
+      let hash = window.location.hash;
+      if (hash == "") {
+        return;
+      }
+      hash = hash.substring(1)
+      if (!isNaN(parseInt(hash))) {
+        document.querySelector(`.comment[comment_id='${hash}']`).scrollIntoView();
+      }
+    }
+    window.onhashchange = hash_handler;
+    window.setTimeout(hash_handler, 1000);
   </script>
 </body>
 </html>

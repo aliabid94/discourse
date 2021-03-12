@@ -1,5 +1,6 @@
 from flask import Flask, request, render_template, send_from_directory, redirect, abort, jsonify
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
+from flask_cachebuster import CacheBuster
 import os
 import hashlib
 import sqlite_utils
@@ -7,13 +8,15 @@ import tables
 import time
 from urllib.parse import urlparse
 
-ARTICLES_PER_PAGE = 25
+ARTICLES_PER_PAGE = 30
 
 app = Flask(__name__)
 app.secret_key = 'secret'
 login_manager = LoginManager()
 login_manager.login_view = 'login'
 login_manager.init_app(app)
+cache_buster = CacheBuster(config={'extensions': ['.js', '.css'], 'hash_size': 5})
+cache_buster.init_app(app)
 
 def get_age(now, timestamp):
     diff = now - timestamp
@@ -196,7 +199,7 @@ def submit_comment():
     article = articles_table.get(data["article_id"])
     article["comments"] += 1
     articles_table.upsert(article, pk="id")
-    return {"success": True}
+    return {"comment_id": comments_table.last_pk}
 
 @app.route('/upvote', methods=["GET", "POST"])
 @login_required

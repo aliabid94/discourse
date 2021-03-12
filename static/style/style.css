@@ -29,6 +29,7 @@ a {
   text-decoration: none;
   color: black;
   font-weight: normal;
+  cursor: pointer;
 }
 a:hover {
   background-color: none;
@@ -92,6 +93,15 @@ hr {
   background-color: floralwhite;
   border-radius: 4px;
 }
+.comment:not(.collapsed) > .collapse > .open, .comment:not(.collapsed) > .children_count {
+  display: none;
+}
+.comment.collapsed > .collapse > .close {
+  display: none;
+}
+.comment.collapsed > .comment_content, .comment.collapsed > .comment_controls, .comment.collapsed > .child {
+  display: none;
+}
 .comment.child {
   padding-left: 0.75em;
   margin-left: 0.5em;
@@ -101,7 +111,7 @@ hr {
   font-size: 0.8rem;
   padding-bottom: 0.75em;
 }
-.comment_author {
+.comment_author, .children_count {
   padding-top: 0.5em;
   font-size: 0.75em;
   color: grey;
