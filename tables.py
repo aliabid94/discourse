@@ -12,6 +12,7 @@ schemas = {
             "time_created": int,
             "upvotes": int,
             "comments": int,
+            "power": int,
         },
         "pk": "id"
     },
@@ -27,6 +28,7 @@ schemas = {
             "disagrees": int,
             "low_qualities": int,
             "violations": int,
+            "power": int
         },
         "pk": "id"
     },
@@ -46,6 +48,7 @@ schemas = {
         "schema": {
             "username": str,
             "password_hash": str,
+            "type": str,
         },
         "pk": "username"
     },

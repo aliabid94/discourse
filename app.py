@@ -7,8 +7,12 @@ import sqlite_utils
 import tables
 import time
 from urllib.parse import urlparse
+import random
+import json
 
 ARTICLES_PER_PAGE = 30
+with open("fake/users.json") as f:
+    PSEUDO_USERS = json.load(f)
 
 app = Flask(__name__)
 app.secret_key = 'secret'
@@ -42,12 +46,28 @@ def get_host(url):
         url = url[4:]
     return url
 
+DEFAULT_POWER = 60
+def get_power(now, time_created, upvotes, comments):
+    time_diff_in_hours = max(1, (now - time_created) / 3600)
+    return round(10 * (upvotes + comments + 6) / time_diff_in_hours ** 0.75)
+
+def update_powers():
+    now = int(time.time())
+    db = sqlite_utils.Database("discourse.db")
+    articles_table = db["articles"]
+    articles = articles_table.rows_where(select="id, time_created, upvotes, comments", 
+        where="power is null or power > 0")
+    articles = list(articles)
+    for article in articles:
+        article["power"] = get_power(now, article["time_created"], article["upvotes"], article["comments"])
+    articles_table.upsert_all(articles, pk="id")    
+
 @app.route('/')
 def homepage():
     p = int(request.args.get("p", 1))
     db = sqlite_utils.Database("discourse.db")
     offset = (p - 1) * ARTICLES_PER_PAGE
-    top_articles = db["articles"].rows_where(order_by="upvotes desc",
+    top_articles = db["articles"].rows_where(order_by="power desc, time_created desc",
                                              limit=ARTICLES_PER_PAGE, offset=offset)
     articles = list(top_articles)
     article_ids = [article["id"] for article in articles]
@@ -80,7 +100,7 @@ def create_how_article():
             "summary": "Discourse is a news forum built to host discussion between many political viewpoints. Most discussion forums are organized using a 'like' or 'upvote/downvote' system where comments with the most votes rise to the top. This system causes the most popular viewpoints to drown out all others. Discourse instead uses an 'agree/disagree' system where users identify which comments they agree with. With this data, Discourse can identify comments that represent distinct viewpoints and organize the comments on each page to present many diverse viewpoints at the top of the discussion. \n \nDiscourse relies on the community to create a welcoming environment for open discussion. When replying with disagreement, assume good faith and the most charitable interpretation of the comment you respond to. Keep the temperature low! Do not criticize or dismiss a commentor or a political group - instead, explain why you disagree with the logic of the comment or perspective itself. Discourse is a moderated community that relies on its users for self-moderation and quality discussion.",
             "url": "#",
             "submitter": "mod",
-            "time_created": int(time.time()),
+            "time_created": 0,
             "upvotes": 0,
             "comments": 0,
         }, pk="id")
@@ -101,6 +121,9 @@ class User:
         self.is_active = True
         self.is_anonymous = False
         self.id = id
+        db = sqlite_utils.Database("discourse.db")
+        user = db["users"].get(id)
+        self.type = user["type"]
 
     def get_id(self):
         return self.id
@@ -124,7 +147,10 @@ def submit():
             "time_created": int(time.time()),
             "upvotes": 0,
             "comments": 0,
+            "power": DEFAULT_POWER
         }
+        if current_user.type == "pseudo":
+            article["submitter"] = random.choice(PSEUDO_USERS)
         articles_table.insert(article)
         return redirect("/" + str(articles_table.last_pk))
 
@@ -157,6 +183,8 @@ def signup():
     password_hash = hashlib.md5(password.encode()).hexdigest()
     db = sqlite_utils.Database("discourse.db")
     users_table = db["users"]
+    if username in PSEUDO_USERS:
+        return abort(403, "User exists")
     try:
         user = users_table.get(username)
         return abort(403, "User exists")
@@ -193,6 +221,8 @@ def submit_comment():
         "low_qualities": 0,
         "violations": 0,
     })
+    if current_user.type == "pseudo":
+        data["author"] = random.choice(PSEUDO_USERS)
     articles_table = db["articles"]
     comments_table = db["comments"]
     comments_table.insert(data)
@@ -215,15 +245,16 @@ def upvote():
     elif request.method == "POST":
         data = request.get_json(force=True)
         article_id = int(data["article_id"])
-        try:
-            upvotes_table.get((article_id, current_user.id))
-            return {"success": True}
-        except sqlite_utils.db.NotFoundError:
-            pass
-        upvotes_table.insert({
-            "username": current_user.id,
-            "article_id": article_id
-        }, pk=("article_id", "username"))
+        if current_user.type != "pseudo":
+            try:
+                upvotes_table.get((article_id, current_user.id))
+                return {"success": True}
+            except sqlite_utils.db.NotFoundError:
+                pass
+            upvotes_table.insert({
+                "username": current_user.id,
+                "article_id": article_id
+            }, pk=("article_id", "username"))
         articles_table = db["articles"]
         article = articles_table.get(article_id)
         article["upvotes"] += 1
@@ -245,6 +276,8 @@ def submit_meta_comment():
         existing_data = meta_comments_table.get(
             (data["comment_id"], current_user.id))
     except sqlite_utils.db.NotFoundError:
+        existing_data = {}
+    if current_user.type == "pseudo":
         existing_data = {}
     if agreement is not None:
         if existing_data.get("agreement") == 1:
@@ -269,4 +302,5 @@ def submit_meta_comment():
 if __name__ == "__main__":
     tables.create_tables()
     create_how_article()
+    update_powers()
     app.run(port=5099)

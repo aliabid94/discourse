@@ -164,15 +164,14 @@
       .then(upvoted_article_ids => {
         if (upvoted_article_ids.length) {
           upvote.classList.add("upvoted");
-        } else {
-          upvote.addEventListener("click", evt => {
-            post("/upvote", {"article_id" : article_id}).then(response => {
-              if (response.ok) {
-                upvote.classList.add("upvoted");
-              }
-            })
-          });        
         }
+        upvote.addEventListener("click", evt => {
+          post("/upvote", {"article_id" : article_id}).then(response => {
+            if (response.ok) {
+              upvote.classList.add("upvoted");
+            }
+          })
+        });        
       })
     } else {
       document.querySelector(".upvote").setAttribute("href", "/login?redirect=/"+article_id);

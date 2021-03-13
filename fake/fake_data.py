@@ -15,7 +15,7 @@ now = int(time.time())
 articles, comments, upvotes = [], [], []
 comment_id = 101
 for i in range(100):
-    comment_count = int(i / 20) + random.randint(1,400)
+    comment_count = random.randint(0, 20)
     article_id = 100 + i
     article = {
             "id": article_id,
@@ -24,7 +24,7 @@ for i in range(100):
             "submitter": random.choice(words),
             "url": random.choice(news_starter) + random.choice(news_sites) + "/" + str(random.randint(1000,  9999)),
             "time_created": now - random.randint(30, 60 * 60  * 24 * 5),
-            "upvotes": int(i / 10),
+            "upvotes": random.randint(0, 35),
             "comments": comment_count,
         }
     for j in range(comment_count):
