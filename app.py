@@ -190,7 +190,8 @@ def signup():
         return abort(403, "User exists")
     except sqlite_utils.db.NotFoundError:
         pass
-    user = {"username": username, "password_hash": password_hash}
+    now = int(time.time())
+    user = {"username": username, "password_hash": password_hash, "time_created": now}
     users_table.insert(user)
     login_user(User(username))
     return redirect("/")
@@ -208,28 +209,37 @@ def logout():
     return redirect(redirect_url)
 
 
-@app.route('/comment', methods=["POST"])
+@app.route('/comment', methods=["POST", "DELETE"])
 @login_required
 def submit_comment():
     data = request.get_json(force=True)
     db = sqlite_utils.Database("discourse.db")
-    data.update({
-        "author": current_user.id,
-        "time_created": int(time.time()),
-        "agrees": 0,
-        "disagrees": 0,
-        "low_qualities": 0,
-        "violations": 0,
-    })
-    if current_user.type == "pseudo":
-        data["author"] = random.choice(PSEUDO_USERS)
-    articles_table = db["articles"]
-    comments_table = db["comments"]
-    comments_table.insert(data)
-    article = articles_table.get(data["article_id"])
-    article["comments"] += 1
-    articles_table.upsert(article, pk="id")
-    return {"comment_id": comments_table.last_pk}
+    if request.method == "POST":
+        data.update({
+            "author": current_user.id,
+            "time_created": int(time.time()),
+            "agrees": 0,
+            "disagrees": 0,
+            "low_qualities": 0,
+            "violations": 0,
+        })
+        if current_user.type == "pseudo":
+            data["author"] = random.choice(PSEUDO_USERS)
+        articles_table = db["articles"]
+        comments_table = db["comments"]
+        comments_table.insert(data)
+        article = articles_table.get(data["article_id"])
+        article["comments"] += 1
+        articles_table.upsert(article, pk="id")
+        return {"comment_id": comments_table.last_pk}
+    elif request.method == "DELETE":
+        comments_table = db["comments"]
+        comment = comments_table.get(data["id"])
+        if current_user.type not in ("pseudo", "mod"):
+            assert comment["author"] == current_user.id
+        comment["deleted"] = True
+        comments_table.upsert(comment, pk="id")
+        return {"success": True}
 
 @app.route('/upvote', methods=["GET", "POST"])
 @login_required

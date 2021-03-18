@@ -55,7 +55,8 @@ for i in range(100):
 db = sqlite_utils.Database("discourse.db")
 user = {
     "username": username,
-    "password_hash": hashlib.md5(password.encode()).hexdigest()
+    "password_hash": hashlib.md5(password.encode()).hexdigest(),
+    "time_created": int(time.time())
 }
 db["users"].upsert_all([user], pk="username")
 db["articles"].upsert_all(articles, pk="id")

@@ -118,6 +118,7 @@ hr {
 }
 .comment_content {
   margin: 4px 0;
+  white-space: pre-wrap;
 }
 #discussion textarea {
   display: block;

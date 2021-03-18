@@ -33,7 +33,7 @@
           <span class="credit">
             {{article["upvotes"]}} points by {{article["submitter"]}} {{ get_age(now, article["time_created"]) }} 
           </span> &bull;
-          <a class="open_summary link" onclick="open_summary(this);">[+] summary</a> &bull; <a class="link" href="/{{article["id"]}}">{{article["comments"]}} comments</a>
+          <a class="open_summary link" onclick="open_summary(this);"><span class="toggle">[+]</span> summary</a> &bull; <a class="link" href="/{{article["id"]}}">{{article["comments"]}} comments</a>
         </div>
       </div>
       {% endfor %}
@@ -52,8 +52,16 @@
       })      
     }
     function open_summary(item) {
-      item.parentElement.parentElement.querySelector(".summary").style.display = "block";
-      item.style.display = "none";
+      let summary_item = item.parentElement.parentElement.querySelector(".summary");
+      if (item.classList.contains("opened")) {
+        item.classList.remove("opened");
+        summary_item.style.display = "none";
+        item.querySelector(".toggle").innerHTML = "[+]";
+      } else {
+        item.classList.add("opened");
+        summary_item.style.display = "block";
+        item.querySelector(".toggle").innerHTML = "[-]";
+      }
     }
     if (signed_in) {
       let upvote_params = article_ids.map(article_id => ["article_ids", article_id]);

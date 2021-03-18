@@ -28,7 +28,8 @@ schemas = {
             "disagrees": int,
             "low_qualities": int,
             "violations": int,
-            "power": int
+            "power": int,
+            "deleted": bool
         },
         "pk": "id"
     },
@@ -49,6 +50,7 @@ schemas = {
             "username": str,
             "password_hash": str,
             "type": str,
+            "time_created": int,
         },
         "pk": "username"
     },
@@ -59,6 +61,14 @@ schemas = {
         },
         "pk": ("article_id", "username")
     },
+    "analytics": {
+        "schema": {
+            "key_type": str,
+            "key_value": str,
+            "visitors": int,
+        },
+        "pk": ("key", "key_type")
+    },
 }
 
 def create_tables():
@@ -66,3 +76,6 @@ def create_tables():
     for table, schema in schemas.items():
         if table not in tables:
             db[table].create(schema["schema"], pk=schema["pk"])
+
+if __name__ == "__main__":
+    create_tables()

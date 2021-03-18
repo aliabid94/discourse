@@ -25,8 +25,8 @@
     <div class="summary">{{article["summary"]}}</div>
     <hr>
     <p class="attention" id="discussion_rules">
-      <strong>Discussion Rules</strong>: Use the space below for thoughtful conversation. Avoid making snarky comments or low-effort humor - flag these comments as <em>Low Quality</em>. Report comments that are threatening, derogatory, or spam. For comments you disagree with, use the <em>Disagree</em> button and engage the commentor with open curiousity.
-      Comments are <strong>not</strong> ordered by popularity - they are arranged to present many different viewpoints at the top of the discussion.
+      <strong>Discussion Rules</strong>: Use the space below for thoughtful conversation. Flag snarky comments or low-effort humor as <em>Low Quality</em>. Report comments that are insulting or spam. For comments you disagree with, use the <em>Disagree</em> button and engage the commentor with open curiousity.
+      Comments are arranged to present many different viewpoints, not ordered by popularity.
     </p>
     <div id="discussion">
       <div class="top_reply">
@@ -61,17 +61,23 @@
       }
     }
     let getCommentCode = (comment, is_child) => {
+      if (comment.deleted && comment.children_count == 0) {
+        return "";
+      } 
       let html = `<div class="comment ${is_child ? "child" : ""}" comment_id=${comment.id}>
         <a class="collapse" onclick="collapse(this);"><span class="close">[-]</span><span class="open">[+]</span></a>
         <a href="#${comment.id}" class="comment_author">${comment.author} ${comment.age}</a>
         ${comment.children_count > 0 ? `<span class="children_count"><span class="count">(+${comment.children_count}</span> children)</span>` : ""}
-        <div class="comment_content">${comment.content}</div>
+        <div class="comment_content">${comment.deleted ? "[deleted]" : comment.content}</div>
         <div class="comment_controls">
           <a class="link agreement" onclick="meta_comment(this, 'agree');">Agree ${comment.agrees > 0 ? "(" + comment.agrees + ")" : ""}</a> &bull;
           <a class="link agreement" onclick="meta_comment(this, 'disagree');">Disagree ${comment.disagrees > 0 ? "(" + comment.disagrees + ")" : ""}</a> &bull;
           <a class="link" onclick="meta_comment(this, 'low_quality');">Low Quality</a> &bull;
           <a class="link" onclick="meta_comment(this, 'report');">Report</a> &bull;
           <a class="link" onclick="open_reply(this, /*top_level=*/false);">Reply</a>
+          ${comment["author"] == "{{ current_user.id }}" || {{ (current_user.type in ("pseudo", "mod"))|tojson }} ? `
+            &bull; <a class="link" onclick="delete_comment(this);">Delete</a>` : ""
+          }
         </div>`;
       if (comment.children) {
         for (child_comment of comment.children) {
@@ -97,9 +103,9 @@
       }
     };
 
-    function post(url, data) {
+    function post(url, data, method) {
       return fetch(url, {
-        method: "POST", 
+        method: method || "POST", 
         body: JSON.stringify(data)
       })      
     }
@@ -154,6 +160,14 @@
       .then(response => response.json())
       .then((response) => {
         window.location.hash = response["comment_id"];
+        location.reload();
+      })
+    }
+    function delete_comment(item) {
+      let comment_id = item.parentElement.parentElement.getAttribute("comment_id");
+      post("/comment", {
+        "id": comment_id, 
+      }, /*method=*/"DELETE").then(() => {
         location.reload();
       })
     }
