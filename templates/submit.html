@@ -1,47 +1,99 @@
 <html>
+
 <head>
-  <title>Discourse</title>
-  <link href="{{ url_for('static', filename='style/style.css') }}" rel="stylesheet">
+  <title>Submit | Discourse</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.7/tailwind.min.css" integrity="sha512-y6ZMKFUQrn+UUEVoqYe8ApScqbjuhjqzTuwUMEGMDuhS2niI8KA3vhH2LenreqJXQS+iIXVTRL2iaNfJbDNA1Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <meta name="viewport" content="width=device-width">
+  <style>
+    a {cursor: pointer}
+  </style>
 </head>
-<body>
-  <div class="container">
-  <div class="top">
-    <a href="/"><h1>Discourse</h1></a>
-    {% if current_user.is_authenticated %}
-    <div class="welcome">Hi, {{ current_user.id }} &bull;
-      <a class="link" href="/submit">Submit</a> &bull; 
-      <a class="link" href="/logout">Logout</a>
-    </div> 
-  {% else %}
-    <a class="link" href="/login">Sign In</a>
-    {% endif %}
-  </div>
-    <form id="submit" method="POST" action="/submit">
-      <h2>submit</h2>        
-      <label for="headline">headline</label>
-      <input type="text" name="headline">
-      <label for="url">url</label>
-      <input type="text" name="url">
-      <label for="summary">summary: write 3-4 sentences summarizing article between <u>150 and 400 characters</u>. do not reiterate headline.</label>
-      <textarea name="summary" onkeyup="countChar(this)"></textarea>
-      <div>
-        character count: 
-        <span id="char_count" style="color: crimson">0</span>
+
+<body class="w-full h-full bg-yellow-50 p-4 h-full box-border text-gray-800">
+  <div class="container mx-auto pb-4 h-full">
+    <div class="flex flex-col h-full">
+      <div class="top flex justify-between items-end mb-2 flex-wrap gap-4">
+        <a href="/">
+          <h1 class="text-4xl font-bold font-serif">Discourse</h1>
+        </a>
+        {% if current_user.is_authenticated %}
+        <div class="welcome">Hi, {{ current_user.id }} &bull;
+          <a class="text-red-700 font-semibold" href="/submit">submit</a> &bull;
+          <a class="text-red-700 font-semibold" href="/logout">logout</a>
+        </div>
+        {% else %}
+        <a class="text-red-700 font-semibold" href="/login">sign in</a>
+        {% endif %}
       </div>
-      <input class="link" type="submit">
-    </form>
-  <script>
-    function countChar(item) {
-      var len = item.value.length;
-      char_count = document.querySelector("#char_count");
-      char_count.innerHTML = len;
-      if (len < 150 || len > 400) {
-        char_count.style.color = "crimson";
-      } else {
-        char_count.style.color = "inherit";
+      <form id="submit" method="POST" action="/submit">
+        <h2 class="text-2xl mb-2">submit</h2>        
+        {% if article is not none %}
+        <input name="id" type="hidden" value="{{ article["id"] }}">
+        {% endif %}
+        <label class="block my-1" for="headline">headline</label>
+        <input class="bg-white border border-black p-1 rounded w-full" type="text" name="headline" {% if article is not none %}value="{{ article["headline"] }}"{% endif %}>
+        <label class="block my-1" for="url">url</label>
+        <input class="bg-white border border-black p-1 rounded w-full" type="text" name="url" {% if article is not none %}value="{{ article["url"] }}"{% endif %}>
+        <label class="block my-1" for="summary">summary: write 4-6 sentences summarizing the article between <u>300 and 600 characters</u> - do
+          not reiterate headline.</label>
+        <textarea class="bg-white border border-black p-1 rounded w-full h-32" name="summary"
+          onkeyup="countChar(this)">{% if article is not none %}{{ article["summary"] }}{% endif %}</textarea>
+        <div>
+          character count:
+          <span id="char_count" style="color: crimson">0</span>
+        </div>
+        <input class="block mt-2 bg-transparent text-red-700 font-semibold" type="submit">
+      </form>
+      {% if suggestions|length > 0 %}
+      <div class="flex-1 overflow-y-scroll">
+        <div class="text-center uppercase mb-2">suggestions</div>
+        {% for article in suggestions %}
+        <div class="article mb-2 bg-white p-2 mr-2 rounded shadow-sm" article_url={{ article["url"] }}>
+          <div class="text-xl">
+            <span class="font-serif">{{article["headline"]}}</span>
+            <span class="text-sm text-gray-500">({{ get_host(article['url']) }})</span>
+          </div>
+          <div class="summary mb-1">{{article["summary"]}}</div>
+          <span class="text-sm">
+            {{ get_age(now, article["time_created"]) }} &bull;
+            <a class="text-red-700 font-semibold" href="{{article['url']}}" target="_blank">
+              read
+            </a> &bull;
+            <a class="text-red-700 font-semibold" onclick="load('{{ article["url"] }}');">
+              load
+            </a>  
+          </span>
+        </div>
+        {% endfor %}  
+      </div>
+      {% endif %}  
+    </div>
+    <script>
+      function countChar(item) {
+        var len = item.value.length;
+        char_count = document.querySelector("#char_count");
+        char_count.innerHTML = len;
+        if (len < 300 || len > 600) {
+          char_count.style.color = "crimson";
+        } else {
+          char_count.style.color = "inherit";
+        }
+      };
+      countChar(document.querySelector("textarea"));
+      let suggested_articles = {{ suggestions|tojson }};
+      let suggestions_map = {};
+      for (let article of suggested_articles) {
+        suggestions_map[article.url] = article;
       }
-    };    
-  </script>
+      function load(article_url) {
+        suggested_article = suggestions_map[article_url];
+        console.log(article_url)
+        document.querySelector("input[name='headline']").value = suggested_article.headline;
+        document.querySelector("input[name='url']").value = suggested_article.url;
+        document.querySelector("textarea[name='summary']").value = suggested_article.summary;
+        countChar(document.querySelector("textarea"));
+      }
+    </script>
 </body>
+
 </html>

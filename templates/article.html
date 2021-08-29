@@ -1,48 +1,74 @@
 <html>
+
 <head>
-  <title>Discourse</title>
-  <link href="{{ url_for('static', filename='style/style.css') }}" rel="stylesheet">
+  <title>{{article["headline"]}}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.7/tailwind.min.css"
+    integrity="sha512-y6ZMKFUQrn+UUEVoqYe8ApScqbjuhjqzTuwUMEGMDuhS2niI8KA3vhH2LenreqJXQS+iIXVTRL2iaNfJbDNA1Q=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    a {cursor: pointer}
+    .comment:not(.collapsed) .collapse .open, .comment:not(.collapsed) .children_count,
+      .comment.collapsed .collapse .close,
+      .comment.collapsed .comment_content, .comment.collapsed .comment_controls, .comment.collapsed .child {
+        display: none;
+    }
+  </style>
   <meta name="viewport" content="width=device-width">
 </head>
-<body>
-  <div class="container">
-    <div class="top">
-      <a href="/"><h1>Discourse</h1></a>
+
+<body class="w-full bg-yellow-50 p-4 text-gray-800 flex-wrap gap-4">
+  <div class="container mx-auto">
+    <div class="top flex justify-between items-end mb-4">
+      <a href="/">
+        <h1 class="text-4xl font-bold font-serif">Discourse</h1>
+      </a>
       {% if current_user.is_authenticated %}
       <div class="welcome">Hi, {{ current_user.id }} &bull;
-        <a class="link" href="/submit">Submit</a> &bull; 
-        <a class="link" href="/logout?redirect=/{{article['id']}}">Logout</a>
-      </div> 
+        <a class="text-red-700 font-semibold" href="/submit">submit</a> &bull;
+        <a class="text-red-700 font-semibold" href="/logout">logout</a>
+      </div>
       {% else %}
-      <a class="link" href="/login?redirect=/{{article['id']}}">Sign In</a>
+      <a class="text-red-700 font-semibold" href="/login">sign in</a>
       {% endif %}
     </div>
-    <div class="line1">
-      <a class="upvote link">▲</a> 
-      <a class="article_link" href="{{ article['url'] }}">{{article["headline"]}}</a>
-      {% if host %}<small>({{ host }})</small>{% endif %}
+    <div class="article mb-2" article_id={{ article["id"] }}>
+      <div class="text-xl mb-2">
+        <a class="upvote text-red-700">▲</a>
+        <a href="{{ article['url'] }}" class="font-serif">
+          {{article["headline"]}}
+        </a>
+        <span class="text-sm text-gray-500">({{ host }})</span>
+      </div>
+      <div class="summary mb-1">
+        {{article["summary"]}}
+        {% if current_user.id == article["submitter"] or is_admin %}
+        <a href="/submit?id={{ article["id"] }}" class="text-red-700 font-semibold">Edit</a>
+        {% endif %}    
+      </div>
     </div>
-    <div class="summary">{{article["summary"]}}</div>
-    <hr>
-    <p class="attention" id="discussion_rules">
-      <strong>Discussion Rules</strong>: Use the space below for thoughtful conversation. Flag snarky comments or low-effort humor as <em>Low Quality</em>. Report comments that are insulting or spam. For comments you disagree with, use the <em>Disagree</em> button and engage the commentor with open curiousity.
+    <p class="mb-2" id="discussion_rules">
+      <strong>Discussion Rules</strong>: Use the space below for thoughtful conversation. Flag snarky comments or
+      low-effort humor as <em>low quality</em>. Report comments that are insulting or spam. For comments you disagree
+      with, use the <em>disagree</em> button and engage the commentor with open curiosity.
       Comments are arranged to present many different viewpoints, not ordered by popularity.
     </p>
     <div id="discussion">
-      <div class="top_reply">
-        <a class="link" onclick="open_reply(this, /*top_level=*/true);">create new comment</a>
+      <div class="mb-2">
+        <a class="text-red-700 font-semibold" onclick="open_reply(this, /*top_level=*/true);">create new comment</a>
       </div>
     </div>
   </div>
   <script>
-    let comments = {{comments|tojson}};
-    let article_id = {{article["id"]}};
-    let signed_in = {{ current_user.is_authenticated|tojson }};
+    let comments = {{ comments | tojson }};
+    let article_id = {{ article["id"] }};
+    let signed_in = {{ current_user.is_authenticated | tojson }};
+    let admin_user = {{ is_admin | tojson }};
     $ = document.querySelector.bind(document);
     $$ = document.querySelectorAll.bind(document);
+    let allow_reply = true;
 
     let id_to_comments = {};
-    comments.map(comment => {id_to_comments[comment.id] = comment});
+    comments.map(comment => { id_to_comments[comment.id] = comment });
     for (let comment of comments) {
       if (comment.parent_id) {
         let parent_comment = id_to_comments[comment.parent_id];
@@ -63,21 +89,25 @@
     let getCommentCode = (comment, is_child) => {
       if (comment.deleted && comment.children_count == 0) {
         return "";
-      } 
-      let html = `<div class="comment ${is_child ? "child" : ""}" comment_id=${comment.id}>
-        <a class="collapse" onclick="collapse(this);"><span class="close">[-]</span><span class="open">[+]</span></a>
-        <a href="#${comment.id}" class="comment_author">${comment.author} ${comment.age}</a>
-        ${comment.children_count > 0 ? `<span class="children_count"><span class="count">(+${comment.children_count}</span> children)</span>` : ""}
-        <div class="comment_content">${comment.deleted ? "[deleted]" : comment.content}</div>
-        <div class="comment_controls">
-          <a class="link agreement" onclick="meta_comment(this, 'agree');">Agree ${comment.agrees > 0 ? "(" + comment.agrees + ")" : ""}</a> &bull;
-          <a class="link agreement" onclick="meta_comment(this, 'disagree');">Disagree ${comment.disagrees > 0 ? "(" + comment.disagrees + ")" : ""}</a> &bull;
-          <a class="link" onclick="meta_comment(this, 'low_quality');">Low Quality</a> &bull;
-          <a class="link" onclick="meta_comment(this, 'report');">Report</a> &bull;
-          <a class="link" onclick="open_reply(this, /*top_level=*/false);">Reply</a>
-          ${comment["author"] == "{{ current_user.id }}" || {{ (current_user.type in ("pseudo", "mod"))|tojson }} ? `
-            &bull; <a class="link" onclick="delete_comment(this);">Delete</a>` : ""
-          }
+      }
+      let html = `<div class="comment ${is_child ? "child pl-3 ml-2 border-l border-gray-400" : ""}" comment_id=${comment.id}>
+        <div class="text-gray-500 text-xs">
+          <a class="collapse" onclick="collapse(this);"><span class="close">[-]</span><span class="open">[+]</span></a>
+          <a href="#${comment.id}" class="comment_author">${comment.author} ${comment.age}${comment.edited ? "*" : ""}</a>
+          ${comment.children_count > 0 ? `<span class="children_count"><span class="count">(+${comment.children_count}</span> children)</span>` : ""}
+        </div>
+        <div class="comment_content py-1">${comment.deleted ? "[deleted]" : comment.content}</div>
+        <div class="comment_controls mb-2 text-xs">
+          <a class="agreement" onclick="meta_comment(this, 'agree');">agree ${comment.agrees > 0 ? "(" + comment.agrees + ")" : ""}</a> &bull;
+          <a class="agreement" onclick="meta_comment(this, 'disagree');">disagree ${comment.disagrees > 0 ? "(" + comment.disagrees + ")" : ""}</a> &bull;
+          <a onclick="meta_comment(this, 'low_quality');">low quality</a> &bull;
+          <a onclick="meta_comment(this, 'report');">report</a> &bull;
+          <a class="text-red-700 font-semibold" onclick="open_reply(this, /*top_level=*/false);">reply</a>
+          ${comment["author"] == "{{ current_user.id }}" || admin_user ? `
+            &bull; <a class="link" onclick="open_edit(this);">edit</a>
+            &bull; <a class="link" onclick="delete_comment(this);">delete</a>
+            ` : ""
+        }
         </div>`;
       if (comment.children) {
         for (child_comment of comment.children) {
@@ -95,7 +125,7 @@
     }
     $("#discussion").innerHTML += discussion_html;
     let collapse = item => {
-      let comment_element = item.parentElement;
+      let comment_element = item.parentElement.parentElement;
       if (comment_element.classList.contains("collapsed")) {
         comment_element.classList.remove("collapsed");
       } else {
@@ -105,16 +135,16 @@
 
     function post(url, data, method) {
       return fetch(url, {
-        method: method || "POST", 
+        method: method || "POST",
         body: JSON.stringify(data)
-      })      
+      })
     }
     function meta_comment(item, action) {
       if (!signed_in) {
-        location.href = "/login?redirect=/" + article_id; 
+        location.href = "/login?redirect=/" + article_id;
       }
       let comment_id = item.parentElement.parentElement.getAttribute("comment_id");
-      let data = {"comment_id": parseInt(comment_id)};
+      let data = { "comment_id": parseInt(comment_id) };
       if (action == "agree") {
         data["agreement"] = 1;
       } else if (action == "disagree") {
@@ -129,7 +159,7 @@
           if (action == "agree" || action == "disagree") {
             item.parentElement.querySelectorAll(".agreement").forEach(agree_choice => {
               agree_choice.style.fontWeight = "normal";
-            });      
+            });
           }
           item.style.fontWeight = "bold";
         }
@@ -139,56 +169,81 @@
     let open_replies = [];
     function open_reply(item, top_level) {
       if (!signed_in) {
-        location.href = "/login?redirect=/" + article_id; 
+        location.href = "/login?redirect=/" + article_id;
       }
       let parent_id = top_level ? -1 : item.parentElement.parentElement.getAttribute("comment_id");
       if (open_replies.includes(parent_id)) {
         return;
       }
       open_replies.push(parent_id);
-      item.parentElement.innerHTML += `<textarea autofocus></textarea><a class="link" onclick="submit_reply(this, ${top_level});">Submit</a>`
+      item.parentElement.innerHTML += `<textarea class="block text-black my-2 w-full h-32 p-2 border border-black" autofocus></textarea>
+        <a class="text-red-700 font-semibold" onclick="submit_reply(this, ${top_level});">submit</a>`
       item.style.display = "none";
     }
+    let open_edits = [];
+    function open_edit(item) {
+      let parent_id = item.parentElement.parentElement.getAttribute("comment_id");
+      if (open_edits.includes(parent_id)) {
+        return;
+      }
+      open_edits.push(parent_id);
+      comment_elem = item.parentElement.parentElement.querySelector(".comment_content");
+      comment_elem.innerHTML = `<textarea class="block text-black my-2 w-full h-32 p-2 border border-black" autofocus>${comment_elem.innerHTML}</textarea><a class="link" onclick="edit_comment(this);">submit</a>`
+    }
     function submit_reply(item, top_level) {
+      if (!allow_reply) {
+        return;
+      }
       let content = item.parentElement.querySelector("textarea").value;
       let parent_id = top_level ? null : item.parentElement.parentElement.getAttribute("comment_id");
+      allow_reply = false;
       post("/comment", {
-        "content": content, 
+        "content": content,
         "parent_id": parent_id,
         "article_id": article_id
       })
-      .then(response => response.json())
-      .then((response) => {
-        window.location.hash = response["comment_id"];
-        location.reload();
-      })
+        .then(response => response.json())
+        .then((response) => {
+          window.location.hash = response["comment_id"];
+          location.reload();
+        })
     }
     function delete_comment(item) {
       let comment_id = item.parentElement.parentElement.getAttribute("comment_id");
       post("/comment", {
-        "id": comment_id, 
+        "id": comment_id,
       }, /*method=*/"DELETE").then(() => {
+        location.reload();
+      })
+    }
+    function edit_comment(item) {
+      let comment_id = item.parentElement.parentElement.getAttribute("comment_id");
+      let content = item.parentElement.querySelector("textarea").value;
+      post("/comment", {
+        "id": comment_id,
+        "content": content
+      }, /*method=*/"PATCH").then(() => {
         location.reload();
       })
     }
     if (signed_in) {
       let upvote = document.querySelector(".upvote");
-      fetch("/upvote?" + new URLSearchParams({"article_ids": article_id}))
-      .then(response => response.json())
-      .then(upvoted_article_ids => {
-        if (upvoted_article_ids.length) {
-          upvote.classList.add("upvoted");
-        }
-        upvote.addEventListener("click", evt => {
-          post("/upvote", {"article_id" : article_id}).then(response => {
-            if (response.ok) {
-              upvote.classList.add("upvoted");
-            }
-          })
-        });        
-      })
+      fetch("/upvote?" + new URLSearchParams({ "article_ids": article_id }))
+        .then(response => response.json())
+        .then(upvoted_article_ids => {
+          if (upvoted_article_ids.length) {
+            upvote.classList.add("upvoted");
+          }
+          upvote.addEventListener("click", evt => {
+            post("/upvote", { "article_id": article_id }).then(response => {
+              if (response.ok) {
+                upvote.classList.add("upvoted");
+              }
+            })
+          });
+        })
     } else {
-      document.querySelector(".upvote").setAttribute("href", "/login?redirect=/"+article_id);
+      document.querySelector(".upvote").setAttribute("href", "/login?redirect=/" + article_id);
     }
     let hash_handler = () => {
       let hash = window.location.hash;
@@ -204,4 +259,5 @@
     window.setTimeout(hash_handler, 1000);
   </script>
 </body>
+
 </html>

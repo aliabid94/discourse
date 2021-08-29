@@ -1,0 +1,88 @@
+<html>
+
+<head>
+  <title>Suggestions | Discourse</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.7/tailwind.min.css"
+    integrity="sha512-y6ZMKFUQrn+UUEVoqYe8ApScqbjuhjqzTuwUMEGMDuhS2niI8KA3vhH2LenreqJXQS+iIXVTRL2iaNfJbDNA1Q=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <meta name="viewport" content="width=device-width">
+  <style>
+    a {
+      cursor: pointer
+    }
+  </style>
+</head>
+
+<body class="w-full h-full bg-yellow-50 p-4 h-full box-border text-gray-800">
+  <div class="container mx-auto pb-4 h-full">
+    <div class="flex flex-col h-full">
+      <div class="top flex justify-between items-end mb-2 flex-wrap gap-4">
+        <a href="/">
+          <h1 class="text-4xl font-bold font-serif">Discourse</h1>
+        </a>
+        {% if current_user.is_authenticated %}
+        <div class="welcome">Hi, {{ current_user.id }} &bull;
+          <a class="text-red-700 font-semibold" href="/submit">submit</a> &bull;
+          <a class="text-red-700 font-semibold" href="/logout">logout</a>
+        </div>
+        {% else %}
+        <a class="text-red-700 font-semibold" href="/login">sign in</a>
+        {% endif %}
+      </div>
+      <div class="text-center uppercase mb-1">suggestions</div>
+      <div class="flex gap-1 mb-2">
+        <a class="text-red-700 font-semibold" href="/suggestions?approval=0">
+          pending
+        </a> &bull;
+        <a class="text-red-700 font-semibold" href="/suggestions?approval=1">
+          approved
+        </a> &bull;
+        <a class="text-red-700 font-semibold" href="/suggestions?approval=-1">
+          rejected
+        </a>
+        </div>
+      {% for article in suggestions %}
+      <div class="article mb-2 bg-white p-2 mr-2 rounded shadow-sm" article_url={{ article["url"] }}>
+        <div>
+          <input name="headline" class="text-xl w-full" value="{{article["headline"]}}">
+          <span class="text-sm text-gray-500">({{ get_host(article['url']) }})</span>
+        </div>
+        <textarea class="summary mb-1 w-full h-40">{{article["summary"]}}</textarea>
+        <span class="text-sm">
+          {{ get_age(now, article["time_created"]) }} &bull;
+          <a class="text-red-700 font-semibold" href="{{article['url']}}" target="_blank">
+            read
+          </a> &bull;
+          <a class="text-red-700 font-semibold" onclick="approve('{{ article["url"] }}', true);">
+            approve
+          </a> &bull;
+          <a class="text-red-700 font-semibold" onclick="approve('{{ article["url"] }}', false);">
+            reject
+          </a>
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    <script>
+      function post(url, data, method) {
+        return fetch(url, {
+          method: method || "POST",
+          body: JSON.stringify(data)
+        })
+      }
+      function approve(article_url, approved) {
+        let article_node = document.querySelector(`.article[article_url='${article_url}']`);
+        article_node.classList.add("hidden");
+        let headline = article_node.querySelector("input[name=headline]").value;
+        let summary = article_node.querySelector("textarea.summary").value;
+        post("/suggestions", {
+          url: article_url,
+          approved: approved ? 1 : -1,
+          headline: headline,
+          summary: summary
+        })
+      }
+    </script>
+</body>
+
+</html>

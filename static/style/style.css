@@ -1,17 +1,22 @@
-html, body {
+body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   margin: 0;
   padding: 0;
+  padding-bottom: 24px;
   background-color: antiquewhite;
   font-size: 14px;
 }
 .container {
   max-width: 1028px;
-  padding: 24px;
+  padding: 0 24px;
   width: 100%;
   min-height: 100%;
   margin: 0 auto;
   box-sizing: border-box;
+}
+.article_link {
+  font-size: 1.2rem;
+  font-family: "Georgia", serif;
 }
 .link {
   border-radius: 1px;
@@ -45,7 +50,7 @@ a:hover {
   display: none;
 }
 .summary {
-  padding: 0.6em 0;
+  padding-top: 0.4em;
   white-space: pre-wrap;
 }
 .top {
@@ -72,7 +77,7 @@ a:hover {
   font-weight: bold;
 }
 .article {
-  margin-bottom: 0.5em;
+  margin-bottom: 1em;
 }
 .credit {
   margin-right: 4px;
@@ -81,17 +86,16 @@ a:hover {
   color: gray;
 }
 .line2 {
+  padding-top: 0.15em;
   font-size: 0.8rem;
-}
-hr {
-  border: 0;
-  height: 1px;
-  background: maroon;
 }
 .attention {
   padding: 0.5em;
   background-color: floralwhite;
   border-radius: 4px;
+}
+.top_reply {
+  margin-bottom: 0.5em;
 }
 .comment:not(.collapsed) > .collapse > .open, .comment:not(.collapsed) > .children_count {
   display: none;
@@ -130,6 +134,7 @@ hr {
   border-radius: 4px;
   border: none;
   font: inherit;
+  font-size: 1rem;
 }
 #login_sections {
   display: flex;

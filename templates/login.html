@@ -1,38 +1,32 @@
 <html>
 <head>
-  <title>Discourse</title>
-  <link href="{{ url_for('static', filename='style/style.css') }}" rel="stylesheet">
+  <title>Login | Discourse</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.7/tailwind.min.css" integrity="sha512-y6ZMKFUQrn+UUEVoqYe8ApScqbjuhjqzTuwUMEGMDuhS2niI8KA3vhH2LenreqJXQS+iIXVTRL2iaNfJbDNA1Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <meta name="viewport" content="width=device-width">
 </head>
-<body>
-  <div class="container">
-    <div class="top">
-      <a href="/"><h1>Discourse</h1></a>
-      {% if current_user.is_authenticated %}
-      <div class="welcome">Hi, {{ current_user.id }} &bull;
-        <a class="link" href="/submit">Submit</a> &bull; 
-        <a class="link" href="/logout">Logout</a>
-      </div> 
-      {% else %}
-      <a class="link" href="/login">Sign In</a>
-      {% endif %}
+<body class="w-full h-full bg-yellow-50 p-4 text-gray-800 flex-wrap gap-4">
+  <div class="container mx-auto pb-4">
+    <div class="top mb-2">
+      <a href="/">
+        <h1 class="text-4xl font-bold font-serif">Discourse</h1>
+      </a>
     </div>
-    <div id="login_sections">
-      <form id="login" method="POST" action="/login?redirect={{redirect}}">
-        <h2>login</h2>        
-        <label for="username">username</label>
-        <input type="text" name="username">
-        <label for="password">password</label>
-        <input type="password" name="password">
-        <input class="link" type="submit">
+    <div class="flex flex-wrap">
+      <form class="flex-1" id="login" method="POST" action="/login?redirect={{redirect}}">
+        <h2 class="text-2xl mb-2">login</h2>        
+        <label class="block my-1" for="username">username</label>
+        <input class="bg-white border border-black p-1 rounded" type="text" name="username">
+        <label class="block my-1" for="password">password</label>
+        <input class="bg-white border border-black p-1 rounded" type="password" name="password">
+        <input class="block mt-2 bg-transparent text-red-700 font-semibold" type="submit">
       </form>
-      <form id="signup" method="POST" action="/signup?redirect={{redirect}}">
-        <h2>signup</h2>        
-        <label for="username">username</label>
-        <input type="text" name="username">
-        <label for="password">password</label>
-        <input type="password" name="password">
-        <input class="link" type="submit">
+      <form class="flex-1" id="signup" method="POST" action="/signup?redirect={{redirect}}">
+        <h2 class="text-2xl mb-2">signup</h2>        
+        <label class="block my-1" for="username">username</label>
+        <input class="bg-white border border-black p-1 rounded" type="text" name="username">
+        <label class="block my-1" for="password">password</label>
+        <input class="bg-white border border-black p-1 rounded" type="password" name="password">
+        <input class="block mt-2 bg-transparent text-red-700 font-semibold" type="submit">
       </form>
   </div>
 </body>

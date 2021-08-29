@@ -13,6 +13,7 @@ schemas = {
             "upvotes": int,
             "comments": int,
             "power": int,
+            "deleted": bool
         },
         "pk": "id"
     },
@@ -29,6 +30,7 @@ schemas = {
             "low_qualities": int,
             "violations": int,
             "power": int,
+            "edited": bool,
             "deleted": bool
         },
         "pk": "id"
@@ -67,7 +69,20 @@ schemas = {
             "key_value": str,
             "visitors": int,
         },
-        "pk": ("key", "key_type")
+        "pk": ("key_type", "key_value")
+    },
+    "suggested_articles": {
+        "schema": {
+            "headline": str,
+            "summary": str,
+            "original_text": str,
+            "url": str,
+            "time_created": int,
+            "approved": bool,
+            "used": bool,
+            "scrape_source": str
+        },
+        "pk": "url"
     },
 }
 

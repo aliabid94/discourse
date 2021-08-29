@@ -5,6 +5,7 @@ import os
 import hashlib
 import sqlite_utils
 import tables
+import scrape_suggestions
 import time
 from urllib.parse import urlparse
 import random
@@ -19,8 +20,10 @@ app.secret_key = 'secret'
 login_manager = LoginManager()
 login_manager.login_view = 'login'
 login_manager.init_app(app)
-cache_buster = CacheBuster(config={'extensions': ['.js', '.css'], 'hash_size': 5})
+cache_buster = CacheBuster(
+    config={'extensions': ['.js', '.css'], 'hash_size': 5})
 cache_buster.init_app(app)
+
 
 def get_age(now, timestamp):
     diff = now - timestamp
@@ -40,6 +43,7 @@ def get_age(now, timestamp):
         unit += "s"
     return str(int(diff)) + " " + unit + " ago"
 
+
 def get_host(url):
     url = urlparse(url).netloc
     if url.startswith("www."):
@@ -47,32 +51,41 @@ def get_host(url):
     return url
 
 DEFAULT_POWER = 60
+
 def get_power(now, time_created, upvotes, comments):
     time_diff_in_hours = max(1, (now - time_created) / 3600)
     return round(10 * (upvotes + comments + 6) / time_diff_in_hours ** 0.75)
+
 
 def update_powers():
     now = int(time.time())
     db = sqlite_utils.Database("discourse.db")
     articles_table = db["articles"]
-    articles = articles_table.rows_where(select="id, time_created, upvotes, comments", 
-        where="power is null or power > 0")
+    articles = articles_table.rows_where(select="id, time_created, upvotes, comments",
+                                         where="power is null or power > 0")
     articles = list(articles)
     for article in articles:
-        article["power"] = get_power(now, article["time_created"], article["upvotes"], article["comments"])
-    articles_table.upsert_all(articles, pk="id")    
+        article["power"] = get_power(
+            now, article["time_created"], article["upvotes"], article["comments"])
+    articles_table.upsert_all(articles, pk="id")
+
 
 @app.route('/')
 def homepage():
     p = int(request.args.get("p", 1))
     db = sqlite_utils.Database("discourse.db")
     offset = (p - 1) * ARTICLES_PER_PAGE
-    top_articles = db["articles"].rows_where(order_by="power desc, time_created desc",
-                                             limit=ARTICLES_PER_PAGE, offset=offset)
+    top_articles = db["articles"].rows_where(
+        where="deleted is null",
+        order_by="power desc, time_created desc",
+        limit=ARTICLES_PER_PAGE, offset=offset)
     articles = list(top_articles)
     article_ids = [article["id"] for article in articles]
-    return render_template("index.html", articles=articles, article_ids=article_ids, p=p, offset=offset,
-                           current_user=current_user, now=time.time(), get_age=get_age, get_host=get_host)
+    return render_template("index.html", articles=articles, article_ids=article_ids,
+                           p=p, offset=offset,
+                           current_user=current_user, is_admin=is_admin(
+                               current_user),
+                           now=time.time(), get_age=get_age, get_host=get_host)
 
 
 @app.route('/<int:article_id>')
@@ -81,12 +94,13 @@ def article(article_id):
     article = db["articles"].get(article_id)
     comments = db["comments"].rows_where(
         "article_id = ?", [article_id], order_by="id asc")
-    comments=list(comments)
+    comments = list(comments)
     now = time.time()
     for comment in comments:
         comment["age"] = get_age(now, comment["time_created"])
-    return render_template("article.html", article=article, comments=comments, 
-        current_user=current_user, host=get_host(article["url"]))
+    return render_template("article.html", article=article, comments=comments,
+                           current_user=current_user, is_admin=is_admin(current_user), host=get_host(article["url"]))
+
 
 def create_how_article():
     db = sqlite_utils.Database("discourse.db")
@@ -105,14 +119,20 @@ def create_how_article():
             "comments": 0,
         }, pk="id")
 
+
 @app.route('/how')
 def how():
     return article(0)
+
 
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
                                'favicon.ico')
+
+
+def is_admin(user):
+    return user.is_authenticated and user.type in ("pseudo", "mod")
 
 
 class User:
@@ -122,37 +142,82 @@ class User:
         self.is_anonymous = False
         self.id = id
         db = sqlite_utils.Database("discourse.db")
-        user = db["users"].get(id)
-        self.type = user["type"]
+        try:
+            user = db["users"].get(id)
+            self.type = user["type"]
+        except sqlite_utils.db.NotFoundError:
+            self.type = None
 
     def get_id(self):
         return self.id
 
 
-@app.route('/submit', methods=["GET", "POST"])
+@app.route('/submit', methods=["GET", "POST", "DELETE"])
 def submit():
+    def url_format(url):
+        if not url.startswith("http://") and (not url.startswith("https://")):
+            url = "http://" + url
+        return url
     if request.method == "GET":
-        return render_template("submit.html", current_user=current_user)
+        article_id = request.args.get("id")
+        article = None
+        suggestions = []
+        if article_id is not None:
+            db = sqlite_utils.Database("discourse.db")
+            articles_table = db["articles"]
+            article = articles_table.get(article_id)
+        elif is_admin(current_user):
+            SUGGESTIONS_TO_QUERY = 100
+            db = sqlite_utils.Database("discourse.db")
+            suggested_articles_table = db["suggested_articles"]
+            top_articles = suggested_articles_table.rows_where(
+                "used != 1 AND approved = 1", order_by="time_created desc", limit=SUGGESTIONS_TO_QUERY)
+            suggestions = list(top_articles)
+        return render_template("submit.html", current_user=current_user,
+                               suggestions=suggestions,
+                               article=article,
+                               now=time.time(), get_age=get_age, get_host=get_host)
     elif request.method == "POST":
         db = sqlite_utils.Database("discourse.db")
         articles_table = db["articles"]
-        url = request.form.get("url")
-        if not url.startswith("http://") and (not url.startswith("https://")):
-            url = "http://" + url
-        article = {
-            "headline": request.form.get("headline"),
-            "summary": request.form.get("summary"),
-            "url": url,
-            "submitter": current_user.id,
-            "time_created": int(time.time()),
-            "upvotes": 0,
-            "comments": 0,
-            "power": DEFAULT_POWER
-        }
-        if current_user.type == "pseudo":
-            article["submitter"] = random.choice(PSEUDO_USERS)
-        articles_table.insert(article)
-        return redirect("/" + str(articles_table.last_pk))
+        article_id = request.form.get("id")
+        if article_id is None:
+            article = {
+                "headline": request.form.get("headline"),
+                "summary": request.form.get("summary"),
+                "url": url_format(request.form.get("url")),
+                "submitter": current_user.id,
+                "time_created": int(time.time()),
+                "upvotes": 0,
+                "comments": 0,
+                "power": DEFAULT_POWER
+            }
+            if current_user.type == "pseudo":
+                article["submitter"] = random.choice(PSEUDO_USERS)
+            articles_table.insert(article)
+            suggested_articles_table = db["suggested_articles"]
+            if suggested_articles_table.get(article["url"]):
+                suggested_articles_table.update(article["url"], {"used": 1})
+            return redirect("/" + str(articles_table.last_pk))
+        else:
+            article_id = int(article_id)
+            article = articles_table.get(article_id)
+            assert current_user.id == article["submitter"] or is_admin(
+                current_user)
+            article["headline"] = request.form.get("headline")
+            article["summary"] = request.form.get("summary")
+            article["url"] = url_format(request.form.get("url"))
+            articles_table.upsert(article, pk="id")
+            return redirect("/" + str(article_id))
+    elif request.method == "DELETE":
+        assert is_admin(current_user)
+        db = sqlite_utils.Database("discourse.db")
+        articles_table = db["articles"]
+        article_id = request.get_json(force=True).get("id")
+        article = articles_table.get(article_id)
+        article["deleted"] = 1
+        articles_table.upsert(article, pk="id")
+        return {"success": True}
 
 
 @app.route('/login', methods=["GET", "POST"])
@@ -191,7 +256,8 @@ def signup():
     except sqlite_utils.db.NotFoundError:
         pass
     now = int(time.time())
-    user = {"username": username, "password_hash": password_hash, "time_created": now}
+    user = {"username": username,
+            "password_hash": password_hash, "time_created": now}
     users_table.insert(user)
     login_user(User(username))
     return redirect("/")
@@ -209,7 +275,7 @@ def logout():
     return redirect(redirect_url)
 
 
-@app.route('/comment', methods=["POST", "DELETE"])
+@app.route('/comment', methods=["POST", "PATCH", "DELETE"])
 @login_required
 def submit_comment():
     data = request.get_json(force=True)
@@ -232,6 +298,16 @@ def submit_comment():
         article["comments"] += 1
         articles_table.upsert(article, pk="id")
         return {"comment_id": comments_table.last_pk}
+    elif request.method == "PATCH":
+        comments_table = db["comments"]
+        comment = comments_table.get(data["id"])
+        assert comment["author"] == current_user.id or is_admin(current_user)
+        comment["content"] = data["content"]
+        now = int(time.time())
+        if now - comment["time_created"] < 5 * 60:
+            comment["edited"] = True
+        comments_table.upsert(comment, pk="id")
+        return {"success": True}
     elif request.method == "DELETE":
         comments_table = db["comments"]
         comment = comments_table.get(data["id"])
@@ -241,6 +317,7 @@ def submit_comment():
         comments_table.upsert(comment, pk="id")
         return {"success": True}
 
+
 @app.route('/upvote', methods=["GET", "POST"])
 @login_required
 def upvote():
@@ -249,7 +326,8 @@ def upvote():
     if request.method == "GET":
         article_ids = request.args.getlist("article_ids")
         upvotes = upvotes_table.rows_where(
-            "username = ? and article_id in (" + ", ".join(["?"] * len(article_ids)) + ")", 
+            "username = ? and article_id in (" +
+            ", ".join(["?"] * len(article_ids)) + ")",
             [current_user.id] + article_ids)
         return jsonify([item["article_id"] for item in upvotes])
     elif request.method == "POST":
@@ -309,8 +387,39 @@ def submit_meta_comment():
     return {"success": True}
 
 
+@app.route('/suggestions', methods=["GET", "POST"])
+@login_required
+def suggestions():
+    assert current_user.type == "mod"
+    if request.method == "GET":
+        approval = int(request.args.get("approval", 0))
+        db = sqlite_utils.Database("discourse.db")
+        suggested_articles_table = db["suggested_articles"]
+        SUGGESTIONS_TO_QUERY = 50
+        top_articles = suggested_articles_table.rows_where(
+            "used != 1 AND approved = ?", (approval,),
+            order_by="time_created desc", limit=SUGGESTIONS_TO_QUERY)
+        suggestions = list(top_articles)
+        return render_template("suggestions.html", current_user=current_user,
+                               suggestions=suggestions,
+                               now=time.time(), get_age=get_age, get_host=get_host)
+    elif request.method == "POST":
+        data = request.get_json(force=True)
+        db = sqlite_utils.Database("discourse.db")
+        suggestions_table = db["suggested_articles"]
+        suggestions_table.upsert(data, pk="url")
+        return {"success": True}
+
+
+@app.route('/scrape_suggestions', methods=["GET"])
+def scrape_suggestions_endpt():
+    source = request.args.get("source")
+    success, fail = scrape_suggestions.scrape_all(source_name=source)
+    return {"success": success, "fail": fail}
+
+
 if __name__ == "__main__":
     tables.create_tables()
     create_how_article()
     update_powers()
-    app.run(port=5099)
+    app.run(port=5099, debug=True)
